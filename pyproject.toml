@@ -8,7 +8,10 @@ author = "John Reese"
 author-email = "john@noswap.com"
 description-file = "README.md"
 home-page = "https://github.com/jreese/jaymap"
-requires = ["aiohttp"]
+requires = [
+    "aiohttp",
+    "dataclasses_json",
+]
 requires-python = ">=3.7"
 classifiers = [
     "Framework :: AsyncIO",

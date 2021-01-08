@@ -3,7 +3,14 @@
 
 import re
 from dataclasses import dataclass
-from typing import NewType, Union, Dict, Any, List, Tuple, Optional
+from typing import NewType, Union, Dict, Any, List, Tuple, Optional, Type
+
+from dataclasses_json import dataclass_json, LetterCase
+
+
+def datatype(cls: Type) -> Type:
+    cls = dataclass(cls)
+    return dataclass_json(letter_case=LetterCase.CAMEL)(cls)
 
 
 class Id(str):
@@ -33,39 +40,39 @@ class UnsignedInt(Int):
     _MIN = 0
 
 
-@dataclass
+@datatype
 class Account:
     name: str
-    isPersonal: bool
-    isReadOnly: bool
-    accountCapabilities: Dict[str, Any]
+    is_personal: bool
+    is_read_only: bool
+    account_capabilities: Dict[str, Any]
 
 
-@dataclass
+@datatype
 class Session:
     capabilities: Dict[str, Any]
     accounts: Dict[Id, Account]
-    primaryAccounts: Dict[str, Id]
+    primary_accounts: Dict[str, Id]
     username: str
-    apiUrl: str
-    downloadUrl: str
-    uploadUrl: str
-    eventSourceUrl: str
+    api_url: str
+    download_url: str
+    upload_url: str
+    event_source_url: str
     state: str
 
 
 Invocation = NewType("Invocation", Tuple[str, Dict[str, Any], str])
 
 
-@dataclass
+@datatype
 class Request:
     using: List[str]
-    methodCalls: List[Invocation]
-    createdIds: Optional[Dict[Id, Id]] = None
+    method_calls: List[Invocation]
+    created_ids: Optional[Dict[Id, Id]] = None
 
 
-@dataclass
+@datatype
 class Response:
-    methodResponses: List[Invocation]
-    sessionState: str
-    createdIds: Optional[Dict[Id, Id]] = None
+    method_responses: List[Invocation]
+    session_state: str
+    created_ids: Optional[Dict[Id, Id]] = None
