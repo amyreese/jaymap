@@ -5,12 +5,14 @@ import re
 from dataclasses import dataclass
 from typing import NewType, Union, Dict, Any, List, Tuple, Optional, Type
 
-from dataclasses_json import dataclass_json, LetterCase
+from dataclasses_json import LetterCase, DataClassJsonMixin
+from dataclasses_json.api import _process_class
 
 
 def datatype(cls: Type) -> Type:
     cls = dataclass(cls)
-    return dataclass_json(letter_case=LetterCase.CAMEL)(cls)
+    cls = _process_class(cls, LetterCase.CAMEL, None)
+    return cls
 
 
 class Id(str):
@@ -41,7 +43,7 @@ class UnsignedInt(Int):
 
 
 @datatype
-class Account:
+class Account(DataClassJsonMixin):
     name: str
     is_personal: bool
     is_read_only: bool
@@ -49,7 +51,7 @@ class Account:
 
 
 @datatype
-class Session:
+class Session(DataClassJsonMixin):
     capabilities: Dict[str, Any]
     accounts: Dict[Id, Account]
     primary_accounts: Dict[str, Id]
@@ -65,14 +67,14 @@ Invocation = NewType("Invocation", Tuple[str, Dict[str, Any], str])
 
 
 @datatype
-class Request:
+class Request(DataClassJsonMixin):
     using: List[str]
     method_calls: List[Invocation]
     created_ids: Optional[Dict[Id, Id]] = None
 
 
 @datatype
-class Response:
+class Response(DataClassJsonMixin):
     method_responses: List[Invocation]
     session_state: str
     created_ids: Optional[Dict[Id, Id]] = None

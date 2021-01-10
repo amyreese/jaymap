@@ -2,7 +2,6 @@
 # Licensed under the MIT license
 
 import asyncio
-import json
 import logging
 import sys
 
@@ -26,4 +25,4 @@ def main(domain: str, username: str, password: str):
 
 
 if __name__ == "__main__":
-    main()
+    main()  # pylint: disable=all

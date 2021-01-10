@@ -56,5 +56,7 @@ class JMAP:
             )
             self.session = Session.from_json(text)
 
+        return self.session
+
     def request(self, req: Request) -> Response:
         pass
