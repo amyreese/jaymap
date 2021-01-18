@@ -49,7 +49,7 @@ class Email(Datatype):
     id: Id
     blob_id: Id
     thread_id: Id
-    mailbox_Ids: Dict[Id, bool]
+    mailbox_ids: Dict[Id, bool]
     keywords: Dict[str, bool]
     size: UnsignedInt
     received_at: UTCDate

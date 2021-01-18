@@ -1,6 +1,7 @@
 # Copyright 2021 John Reese
 # Licensed under the MIT license
 
+from datetime import datetime, timezone, timedelta
 from unittest import TestCase
 
 from jaymap.types import base, core
@@ -61,6 +62,8 @@ class CoreTypes(TestCase):
                 with self.assertRaisesRegex(ValueError, r"invalid Id"):
                     core.Id(value)
 
+        self.assertEqual(repr(core.Id("aoeu1234")), "Id('aoeu1234')")
+
     def test_int_class(self):
         for value in (
             0,
@@ -83,6 +86,8 @@ class CoreTypes(TestCase):
                 with self.assertRaisesRegex(ValueError, r"Int -?\d+ [<>]"):
                     core.Int(value)
 
+        self.assertEqual(repr(core.Int(42)), "Int(42)")
+
     def test_unsigned_int_class(self):
         for value in (0, 1, 1000, 1000000, 2 ** 53 - 1, "0", "1000"):
             with self.subTest(f"valid unsigned int {value}"):
@@ -94,6 +99,77 @@ class CoreTypes(TestCase):
             with self.subTest(f"invalid unsigned int {value}"):
                 with self.assertRaisesRegex(ValueError, r"UnsignedInt -?\d+ [<>]"):
                     core.UnsignedInt(value)
+
+        self.assertEqual(repr(core.UnsignedInt(42)), "UnsignedInt(42)")
+
+    def test_date_class(self):
+        for source, expected in (
+            (
+                "2014-10-30T06:12:00Z",
+                datetime(2014, 10, 30, 6, 12, 0, tzinfo=timezone.utc),
+            ),
+            (
+                "2014-10-30T06:12:00+05:00",
+                datetime(2014, 10, 30, 6, 12, 0, tzinfo=timezone(timedelta(hours=5))),
+            ),
+            (
+                "2014-10-30T06:12:00-08:00",
+                datetime(2014, 10, 30, 6, 12, 0, tzinfo=timezone(timedelta(hours=-8))),
+            ),
+        ):
+            with self.subTest(source):
+                result = core.Date(source)
+                self.assertEqual(result, source)
+                self.assertEqual(result.datetime, expected)
+
+                second = core.Date.from_datetime(result.datetime)
+                self.assertEqual(second, source)
+                self.assertEqual(second.datetime, expected)
+
+        for source in ("foo bar", "2014-10-30 06:12:00"):
+            with self.subTest(source):
+                with self.assertRaisesRegex(ValueError, "does not match format"):
+                    core.Date(source)
+
+    def test_utcdate_class(self):
+        for source, expected in (
+            (
+                "2014-10-30T06:12:00Z",
+                datetime(2014, 10, 30, 6, 12, 0, tzinfo=timezone.utc),
+            ),
+            (
+                "2014-10-30T06:12:00+00:00",
+                datetime(2014, 10, 30, 6, 12, 0, tzinfo=timezone.utc),
+            ),
+        ):
+            with self.subTest(source):
+                result = core.UTCDate(source)
+                self.assertEqual(result, source)
+                self.assertEqual(result.datetime, expected)
+
+                second = core.UTCDate.from_datetime(result.datetime)
+                if source.endswith("Z"):
+                    self.assertEqual(second, source)
+                self.assertEqual(second.datetime, expected)
+
+        for source in ("foo bar", "2014-10-30 06:12:00"):
+            with self.subTest(source):
+                with self.assertRaisesRegex(ValueError, "does not match format"):
+                    core.UTCDate(source)
+
+        for source in ("2014-10-30T06:12:00+01:00",):
+            with self.subTest(source):
+                with self.assertRaisesRegex(ValueError, "invalid parsed timezone"):
+                    core.UTCDate(source)
+
+        for source in (
+            datetime(2014, 10, 30, 6, 12, tzinfo=timezone(timedelta(hours=5))),
+        ):
+            with self.subTest(source):
+                with self.assertRaisesRegex(ValueError, "invalid timezone"):
+                    core.UTCDate("", source)
+                with self.assertRaisesRegex(ValueError, "invalid timezone"):
+                    core.UTCDate.from_datetime(source)
 
     def test_is_datatype(self):
         for obj in TEST_OBJECTS:

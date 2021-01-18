@@ -76,7 +76,8 @@ def decode(obj: Any, hint: Type) -> Any:
             fname = field.name
             key = camelcase(fname.strip("_"))
 
-            kwargs[fname] = decode(obj[key], ft)
+            if key in obj:
+                kwargs[fname] = decode(obj[key], ft)
 
         return ftype(**kwargs)
 
@@ -204,6 +205,10 @@ class Datatype:
         return cast(cls, decode(data, cls))
 
     @classmethod
+    def from_list(cls: Type[T], data: List[Dict[str, Any]]) -> List[T]:
+        return [cls.from_dict(v) for v in data]
+
+    @classmethod
     def from_json(cls: Type[T], text: str) -> T:
         return cls.from_dict(json.loads(text))
 
@@ -211,6 +216,7 @@ class Datatype:
         return encode(self, self.__class__)
 
     def to_json(self, **kwargs: Any) -> str:
+        kwargs.setdefault("sort_keys", True)
         return json.dumps(self.to_dict(), **kwargs)
 
 

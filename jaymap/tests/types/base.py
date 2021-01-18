@@ -20,7 +20,7 @@ class Foo(base.Datatype):
     from_: int
     items: List[MyInt]
     bucket_values: Dict[str, MyInt]
-    maybe: Optional[CustomTuple]
+    maybe: Optional[CustomTuple] = None
 
 
 class Nested(base.Datatype):
@@ -67,7 +67,6 @@ class BaseTypes(TestCase):
                 "from": 1234,
                 "items": [1, 3, 9],
                 "bucketValues": {"foo": 1, "bar": 2},
-                "maybe": None,
             },
             Foo,
         )
@@ -76,7 +75,6 @@ class BaseTypes(TestCase):
             from_=1234,
             items=[1, 3, 9],
             bucket_values={"foo": 1, "bar": 2},
-            maybe=None,
         )
         self.assertEqual(result, expected)
         self.assertIsInstance(result.items[0], MyInt)
@@ -97,7 +95,6 @@ class BaseTypes(TestCase):
                         "from": 1234,
                         "items": [1, 3, 9],
                         "bucketValues": {"foo": 1, "bar": 2},
-                        "maybe": None,
                     },
                 ],
                 "maybe": {
@@ -124,7 +121,6 @@ class BaseTypes(TestCase):
                     from_=1234,
                     items=[1, 3, 9],
                     bucket_values={"foo": 1, "bar": 2},
-                    maybe=None,
                 ),
             ],
             maybe=Foo(
@@ -261,3 +257,43 @@ class BaseTypes(TestCase):
     def test_encode_bad_input(self):
         with self.assertRaisesRegex(NotImplementedError, r"failed to encode"):
             base.encode([1, 2], Foo)
+
+    def test_datatype_methods(self):
+        objects = [
+            Foo(
+                name="something",
+                from_=1234,
+                items=[1, 3, 9],
+                bucket_values={"foo": 1, "bar": 2},
+                maybe=None,
+            ),
+            Foo(
+                name="else",
+                from_=1234,
+                items=[1, 3, 9],
+                bucket_values={"foo": 1, "bar": 2},
+            ),
+        ]
+
+        expected = {
+            "name": "something",
+            "from": 1234,
+            "items": [1, 3, 9],
+            "bucketValues": {"foo": 1, "bar": 2},
+            "maybe": None,
+        }
+        result = objects[0].to_dict()
+        self.assertEqual(result, expected)
+
+        expected = """{"bucketValues": {"bar": 2, "foo": 1}, "from": 1234, "items": [1, 3, 9], "maybe": null, "name": "something"}"""
+        result = objects[0].to_json()
+        self.assertEqual(result, expected)
+
+        for obj in objects:
+            with self.subTest(obj):
+                self.assertEqual(obj, Foo.from_dict(obj.to_dict()))
+                self.assertEqual(obj, Foo.from_json(obj.to_json()))
+
+        data = [obj.to_dict() for obj in objects]
+        result = Foo.from_list(data)
+        self.assertEqual(result, objects)

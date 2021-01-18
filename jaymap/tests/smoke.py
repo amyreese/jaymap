@@ -71,7 +71,7 @@ def main(domain: str, username: str, password: str):
             )
             res = await client.request(req)
             emails = res.method_responses[-1][1]["list"]
-            emails = Email.schema().load(emails, many=True)
+            emails = Email.from_list(emails)
             click.secho(f"{emails!r}")
 
     asyncio.run(inner())
