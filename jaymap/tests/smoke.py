@@ -8,6 +8,8 @@ import sys
 import click
 
 from jaymap.client import JMAP
+from jaymap.types.core import Request, Invocation, Capabilities
+from jaymap.types.mail import Email
 
 
 @click.command()
@@ -20,6 +22,57 @@ def main(domain: str, username: str, password: str):
     async def inner():
         async with JMAP(domain, username, password) as client:
             click.echo(client.session)
+            account_id = client.session.primary_accounts[Capabilities.MAIL]
+            methods = [
+                (
+                    "Mailbox/query",
+                    {"accountId": account_id, "filter": {"role": "inbox"}},
+                    "c1",
+                ),
+                (
+                    "Mailbox/get",
+                    {
+                        "accountId": account_id,
+                        "#ids": {
+                            "resultOf": "c1",
+                            "name": "Mailbox/query",
+                            "path": "/ids",
+                        },
+                    },
+                    "c2",
+                ),
+                (
+                    "Email/query",
+                    {
+                        "accountId": account_id,
+                        "filter": {
+                            "inMailbox": "d00b1aa9-ce5c-4775-ba79-e8a8d1a042fd",
+                        },
+                        "limit": 2,
+                    },
+                    "c3",
+                ),
+                (
+                    "Email/get",
+                    {
+                        "accountId": account_id,
+                        "#ids": {
+                            "resultOf": "c3",
+                            "name": "Email/query",
+                            "path": "/ids",
+                        },
+                    },
+                    "c3",
+                ),
+            ]
+            req = Request(
+                using=client.capabilities,
+                method_calls=methods,
+            )
+            res = await client.request(req)
+            emails = res.method_responses[-1][1]["list"]
+            emails = Email.schema().load(emails, many=True)
+            click.secho(f"{emails!r}")
 
     asyncio.run(inner())
 

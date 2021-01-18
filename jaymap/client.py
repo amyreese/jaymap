@@ -1,17 +1,23 @@
 # Copyright 2021 John Reese
 # Licensed under the MIT License
 
+import asyncio
 import json
 import logging
 from contextlib import AsyncExitStack
 from dataclasses import dataclass, field
-from typing import Dict
+from typing import Dict, List
 
 import aiohttp
 
-from .types import Session, Request, Response
+from jaymap.types.core import Session, Request, Response
 
 LOG = logging.getLogger(__name__)
+
+
+def log_json(message: str, text: str) -> None:
+    data = json.loads(text)
+    LOG.debug("%s\n%s", message, json.dumps(data, indent=4, sort_keys=True))
 
 
 @dataclass(eq=False, order=False)
@@ -20,6 +26,9 @@ class JMAP:
     username: str  # user@fastmail.com
     password: str = field(repr=False)  # hunter42
     session: Session = field(init=False)
+
+    capabilities: List[str] = field(default_factory=list)
+    account_id: str = ""
 
     stack: AsyncExitStack = field(init=False, repr=False)
     client: aiohttp.ClientSession = field(init=False, repr=False)
@@ -39,24 +48,40 @@ class JMAP:
         self.client = await self.stack.enter_async_context(
             aiohttp.ClientSession(auth=basic_auth)
         )
-        await self.init()
+        await self.update_session()
         return self
 
     async def __aexit__(self, *args) -> None:
         await self.stack.aclose()
 
-    async def init(self) -> Session:
+    async def update_session(self) -> Session:
         discovery_url = f"https://{self.domain}/.well-known/jmap"
+        LOG.debug("sending auto-discovery request to %s", discovery_url)
         async with self.client.get(discovery_url) as response:
             text = await response.text("utf-8")
-            session_json = json.loads(text)
-            LOG.debug(
-                "JMAP Session state:\n%s",
-                json.dumps(session_json, indent=4, sort_keys=True),
-            )
+            if response.status != 200:
+                raise ValueError(f"response error {response.status}: {text}")
+
+            log_json("auto-discovery response", text)
             self.session = Session.from_json(text)
+            self.capabilities = list(self.session.capabilities)
 
         return self.session
 
-    def request(self, req: Request) -> Response:
-        pass
+    async def request(self, req: Request) -> Response:
+        api_url = self.session.api_url
+        text = req.to_json()
+        LOG.debug("JMAP.request(%s)\n  %s\n  %s", repr(req), api_url, text)
+        async with self.client.post(api_url, data=text) as response:
+            text = await response.text("utf-8")
+            if response.status != 200:
+                raise ValueError(f"response error {response.status}: {text}")
+
+            log_json("API response", text)
+            data = Response.from_json(text)
+
+            if data.session_state != self.session.state:
+                LOG.debug("session state changed, triggering auto-discovery")
+                asyncio.create_task(self.update_session())
+
+            return data
