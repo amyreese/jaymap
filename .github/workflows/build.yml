@@ -9,6 +9,7 @@ on:
 
 jobs:
   project:
+    environment: build
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -34,5 +35,5 @@ jobs:
         run: make lint
         if: ${{ matrix.python-version != '3.9' }}
       - name: Coverage
-        run: codecov --token ${{ secrets.CODECOV_TOKEN }} --branch ${{ github.ref }}
+        run: codecov --branch ${{ github.ref }}
         continue-on-error: true
