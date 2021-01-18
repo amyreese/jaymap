@@ -89,25 +89,3 @@ class Response(Datatype):
     method_responses: List[Invocation]
     session_state: str
     created_ids: Optional[Dict[Id, Id]] = None
-
-
-class Object(Datatype):
-    def get(
-        self,
-        account_id: Id,
-        ids: Optional[List[Id]] = None,
-        properties: Optional[List[str]] = None,
-        **kwargs: Any,
-    ) -> List[Invocation]:
-        return []
-
-    def changes(
-        self,
-        account_id: Id,
-        since_state: str,
-        max_changes: Optional[UnsignedInt] = None,
-    ) -> List[Invocation]:
-        pass
-
-    def set(self):
-        pass

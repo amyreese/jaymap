@@ -7,19 +7,11 @@ https://jmap.io/spec-mail.html
 
 from typing import Optional, Any, List, Dict
 
-from jaymap.types.core import (
-    datatype,
-    DataClassJsonMixin,
-    Id,
-    UnsignedInt,
-    UTCDate,
-    field,
-)
+from jaymap.types.base import Datatype, field
+from jaymap.types.core import Id, UnsignedInt, UTCDate
 
 
-@datatype
-class Mailbox(DataClassJsonMixin):
-
+class Mailbox(Datatype):
     id: Id
     name: str
     parent_id: Optional[Id]
@@ -33,32 +25,27 @@ class Mailbox(DataClassJsonMixin):
     is_subscribed: bool
 
 
-@datatype
-class Thread(DataClassJsonMixin):
+class Thread(Datatype):
     id: Id
     email_ids: List[Id]
 
 
-@datatype
-class EmailAddress(DataClassJsonMixin):
+class EmailAddress(Datatype):
     name: Optional[str]
     email: str
 
 
-@datatype
-class EmailAddressGroup(DataClassJsonMixin):
+class EmailAddressGroup(Datatype):
     name: Optional[str]
     addresses: List[EmailAddress]
 
 
-@datatype
-class EmailHeader(DataClassJsonMixin):
+class EmailHeader(Datatype):
     name: str
     value: str
 
 
-@datatype
-class Email(DataClassJsonMixin):
+class Email(Datatype):
     id: Id
     blob_id: Id
     thread_id: Id
@@ -79,15 +66,13 @@ class Email(DataClassJsonMixin):
     sent_at: Optional[str]
 
 
-@datatype
-class SearchSnippet(DataClassJsonMixin):
+class SearchSnippet(Datatype):
     email_id: Id
     subject: Optional[str]
     preview: Optional[str]
 
 
-@datatype
-class Identity(DataClassJsonMixin):
+class Identity(Datatype):
     id: Id
     name: str
     email: str
@@ -98,27 +83,23 @@ class Identity(DataClassJsonMixin):
     may_delete: bool
 
 
-@datatype
-class Address(DataClassJsonMixin):
+class Address(Datatype):
     email: str
     parameters: Any
 
 
-@datatype
-class Envelope(DataClassJsonMixin):
+class Envelope(Datatype):
     mail_from: str
     rcpt_to: List[Address]
 
 
-@datatype
-class DeliveryStatus(DataClassJsonMixin):
+class DeliveryStatus(Datatype):
     smtp_reply: str
     delivered: str
     displayed: str
 
 
-@datatype
-class EmailSubmission(DataClassJsonMixin):
+class EmailSubmission(Datatype):
     id: Id
     identity_id: Id
     email_id: Id
@@ -131,8 +112,7 @@ class EmailSubmission(DataClassJsonMixin):
     mdn_blob_ids: List[Id] = field(default_factory=list)
 
 
-@datatype
-class VacationResponse(DataClassJsonMixin):
+class VacationResponse(Datatype):
     id: Id
     is_enabled: bool
     from_date: Optional[UTCDate]

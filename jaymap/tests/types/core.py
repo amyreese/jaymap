@@ -38,10 +38,17 @@ TEST_OBJECTS = (
             core.Invocation("func2", {"name": "foo"}, "c2"),
         ],
     ),
+    core.Response(
+        method_responses=[
+            core.Invocation("func1", {"name": "foo"}, "c1"),
+            core.Invocation("func1", {"name": "foo"}, "c1"),
+        ],
+        session_state="aoeu2345",
+    ),
 )
 
 
-class CoreTypesTest(TestCase):
+class CoreTypes(TestCase):
     def test_id_class(self):
         for value in ("a", "1", "-", "u1234", "23a890Z_23-"):
             with self.subTest(f"valid id {value}"):

@@ -24,10 +24,11 @@ from typing import (
     cast,
 )
 
-from stringcase import camelcase, snakecase
+from stringcase import camelcase
 from typing_inspect import (
     is_generic_type,
     is_optional_type,
+    is_union_type,
     get_origin,
     get_args,
     get_generic_bases,
@@ -35,7 +36,7 @@ from typing_inspect import (
 
 T = TypeVar("T")
 
-PRIMITIVES = (bool, float, int, str, type(None), Any)
+PRIMITIVES = (bool, float, int, bytes, str, type(None), Any)
 
 
 def is_primitive(ftype: Type) -> bool:
@@ -45,16 +46,28 @@ def is_primitive(ftype: Type) -> bool:
         return False
 
 
-def decode(obj: Any, ftype: Type) -> Any:
+def decode(obj: Any, hint: Type) -> Any:
+    ftype = hint
     if ftype in PRIMITIVES:
         return obj
+
+    if is_optional_type(ftype):
+        if obj is None:
+            return None
+
+        targs = [t for t in get_args(ftype) if t is not type(None)]
+        if len(targs) > 1:
+            raise NotImplementedError(f"can't decode union types ({targs})")
+        ftype = targs[0]
+    elif is_union_type(ftype):
+        raise NotImplementedError(f"can't decode union types ({get_args(ftype)})")
 
     if is_primitive(ftype):
         return ftype(obj)
 
     if is_datatype(ftype):
         if not isinstance(obj, dict):
-            raise TypeError(obj)
+            raise TypeError(f"invalid data {obj!r} for {ftype}")
 
         kwargs: Dict[str, Any] = {}
 
@@ -67,23 +80,14 @@ def decode(obj: Any, ftype: Type) -> Any:
 
         return ftype(**kwargs)
 
-    if is_optional_type(ftype):
-        if obj is None:
-            return None
-
-        targs = [t for t in get_args(ftype) if t is not type(None)]
-        if len(targs) > 1:
-            raise NotImplementedError(f"can't decode union types ({targs})")
-        ftype = targs[0]
-
     if is_generic_type(ftype):
         origin = get_origin(ftype)
         bases = get_generic_bases(ftype)
         targs = get_args(ftype)
 
         while origin is None and bases:
-            if len(bases) > 1:
-                raise NotImplementedError(f"can't encode multiple bases {ftype}")
+            if len(bases) > 1:  # pragma: nocover
+                raise NotImplementedError(f"can't decode multiple bases {ftype}")
             ftype = bases[0]
             origin = get_origin(ftype)
             bases = get_generic_bases(ftype)
@@ -91,11 +95,11 @@ def decode(obj: Any, ftype: Type) -> Any:
 
         if origin in (dict, Dict, Mapping):
             if not is_primitive(targs[0]):
-                raise NotImplementedError(f"can't encode {ftype}")
+                raise NotImplementedError(f"can't decode object keys {ftype}")
             ftype = targs[1]
 
-            if is_primitive(ftype):
-                return obj
+            if ftype in PRIMITIVES:
+                return dict(obj)
             else:
                 return {k: decode(v, ftype) for k, v in obj.items()}
 
@@ -105,7 +109,7 @@ def decode(obj: Any, ftype: Type) -> Any:
         if origin in (set, Set):
             ftype = targs[0]
 
-            if is_primitive(ftype):
+            if ftype in PRIMITIVES:
                 return set(obj)
             else:
                 return set(decode(v, ftype) for v in obj)
@@ -113,15 +117,16 @@ def decode(obj: Any, ftype: Type) -> Any:
         if origin in (list, List):
             ftype = targs[0]
 
-            if is_primitive(ftype):
+            if ftype in PRIMITIVES:
                 return list(obj)
             else:
                 return [decode(v, ftype) for v in obj]
 
-    return ftype(obj)
+    raise NotImplementedError(f"failed to decode {obj} as type {hint}")
 
 
-def encode(obj: Any, ftype: Type) -> Any:
+def encode(obj: Any, hint: Type) -> Any:
+    ftype = hint
     if obj is None or is_primitive(ftype):
         return obj
 
@@ -130,6 +135,8 @@ def encode(obj: Any, ftype: Type) -> Any:
         if len(targs) > 1:
             raise NotImplementedError(f"can't encode union types ({targs})")
         ftype = targs[0]
+    elif is_union_type(ftype):
+        raise NotImplementedError(f"can't encode union types ({get_args(ftype)})")
 
     if is_generic_type(ftype):
         origin = get_origin(ftype)
@@ -137,7 +144,7 @@ def encode(obj: Any, ftype: Type) -> Any:
         targs = get_args(ftype)
 
         while origin is None and bases:
-            if len(bases) > 1:
+            if len(bases) > 1:  # pragma: nocover
                 raise NotImplementedError(f"can't encode multiple bases {ftype}")
             ftype = bases[0]
             origin = get_origin(ftype)
@@ -146,7 +153,7 @@ def encode(obj: Any, ftype: Type) -> Any:
 
         if origin in (dict, Dict, Mapping):
             if not is_primitive(targs[0]):
-                raise NotImplementedError(f"can't encode {ftype}")
+                raise NotImplementedError(f"can't encode object keys {ftype}")
             ftype = targs[1]
 
             if is_primitive(ftype):
@@ -183,7 +190,7 @@ def encode(obj: Any, ftype: Type) -> Any:
 
         return result
 
-    raise NotImplementedError(f"can't encode {ftype}({type(obj)!r})")
+    raise NotImplementedError(f"failed to encode {hint}({type(obj)!r})")
 
 
 class Datatype:
