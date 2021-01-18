@@ -3,8 +3,7 @@
 
 from unittest import TestCase
 
-import json
-from jaymap.types import core
+from jaymap.types import base, core
 
 TEST_CAPABILITIES = {core.Capabilities.CORE: {"maxConcurrentRequests": 8}}
 TEST_OBJECTS = (
@@ -32,10 +31,17 @@ TEST_OBJECTS = (
         event_source_url="https://localhost:4433/events/",
         state="aoeu1234",
     ),
+    core.Request(
+        using=[core.Capabilities.CORE],
+        method_calls=[
+            core.Invocation("func1", {"name": "foo"}, "c1"),
+            core.Invocation("func2", {"name": "foo"}, "c2"),
+        ],
+    ),
 )
 
 
-class TypesTest(TestCase):
+class CoreTypesTest(TestCase):
     def test_id_class(self):
         for value in ("a", "1", "-", "u1234", "23a890Z_23-"):
             with self.subTest(f"valid id {value}"):
@@ -85,15 +91,13 @@ class TypesTest(TestCase):
     def test_is_datatype(self):
         for obj in TEST_OBJECTS:
             with self.subTest(obj.__class__.__name__):
-                self.assertTrue(core.is_datatype(obj))
-                self.assertTrue(core.is_datatype(obj.__class__))
+                self.assertTrue(base.is_datatype(obj))
+                self.assertTrue(base.is_datatype(obj.__class__))
 
     def test_datatype_encode_decode(self):
         for obj in TEST_OBJECTS:
             with self.subTest(obj.__class__.__name__):
-                data = obj.to_dict()
-                text = json.dumps(data)
-                data2 = json.loads(text)
-                obj2 = obj.__class__.from_dict(data2)
+                text = obj.to_json(indent=4)
+                obj2 = obj.__class__.from_json(text)
                 self.assertEqual(obj.__class__, obj2.__class__)
                 self.assertEqual(obj, obj2)
