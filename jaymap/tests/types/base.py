@@ -1,6 +1,7 @@
 # Copyright 2021 John Reese
 # Licensed under the MIT license
 
+import textwrap
 from typing import Tuple, Dict, Any, Optional, List, Union, Set, Iterable
 from unittest import TestCase
 
@@ -257,6 +258,84 @@ class BaseTypes(TestCase):
     def test_encode_bad_input(self):
         with self.assertRaisesRegex(NotImplementedError, r"failed to encode"):
             base.encode([1, 2], Foo)
+
+    def test_datatype_repr(self):
+        result = repr(
+            Nested(
+                foos=[
+                    Foo(
+                        name="something",
+                        from_=1234,
+                        items=[1, 3, 9],
+                        bucket_values={"foo": 1, "bar": 2},
+                        maybe=None,
+                    ),
+                    Foo(
+                        name="else",
+                        from_=1234,
+                        items=[1, 3, 9],
+                        bucket_values={"foo": 1, "bar": 2},
+                    ),
+                ],
+                maybe=Foo(
+                    name="another",
+                    from_=1234,
+                    items=[1, 3, 9],
+                    bucket_values={"foo": 1, "bar": 2},
+                    maybe=None,
+                ),
+            )
+        )
+        expected = textwrap.dedent(
+            """\
+            Nested(
+                foos=[
+                    Foo(
+                        name='something',
+                        from_=1234,
+                        items=[
+                            1,
+                            3,
+                            9,
+                        ],
+                        bucket_values={
+                            'foo': 1,
+                            'bar': 2,
+                        },
+                        maybe=None,
+                    ),
+                    Foo(
+                        name='else',
+                        from_=1234,
+                        items=[
+                            1,
+                            3,
+                            9,
+                        ],
+                        bucket_values={
+                            'foo': 1,
+                            'bar': 2,
+                        },
+                        maybe=None,
+                    ),
+                ],
+                maybe=Foo(
+                    name='another',
+                    from_=1234,
+                    items=[
+                        1,
+                        3,
+                        9,
+                    ],
+                    bucket_values={
+                        'foo': 1,
+                        'bar': 2,
+                    },
+                    maybe=None,
+                ),
+            )"""
+        )
+        self.assertEqual(result, expected)
 
     def test_datatype_methods(self):
         objects = [

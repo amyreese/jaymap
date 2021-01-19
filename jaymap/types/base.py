@@ -8,6 +8,7 @@ Base datatype implementation with encoding/decoding support
 import json
 import re
 from dataclasses import dataclass, field, is_dataclass, asdict, fields
+from textwrap import indent
 from typing import (
     Union,
     Dict,
@@ -36,6 +37,7 @@ from typing_inspect import (
 
 T = TypeVar("T")
 
+INDENT = "    "
 PRIMITIVES = (bool, float, int, bytes, str, type(None), Any)
 
 
@@ -198,7 +200,23 @@ class Datatype:
     """Dataclass derivative with json encode/decode capabilities"""
 
     def __init_subclass__(cls):
-        dataclass(cls)
+        dataclass(repr=False)(cls)
+
+    def __repr__(self) -> str:
+        parts: List[str] = []
+        for field in fields(self):
+            value = getattr(self, field.name)
+            if isinstance(value, list):
+                inner = "\n".join(f"{v!r}," for v in value)
+                part = f"[\n{indent(inner, INDENT)}\n]"
+            elif isinstance(value, dict):
+                inner = "\n".join(f"{k!r}: {v!r}," for k, v in value.items())
+                part = f"{{\n{indent(inner, INDENT)}\n}}"
+            else:
+                part = repr(value)
+            parts.append(f"{field.name}={part},")
+        inner = indent("\n".join(parts), INDENT)
+        return f"{self.__class__.__name__}(\n{inner}\n)"
 
     @classmethod
     def from_dict(cls: Type[T], data: Dict[str, Any]) -> T:
