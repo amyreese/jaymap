@@ -206,10 +206,10 @@ class Datatype:
         parts: List[str] = []
         for field in fields(self):
             value = getattr(self, field.name)
-            if isinstance(value, list):
+            if isinstance(value, list) and value:
                 inner = "\n".join(f"{v!r}," for v in value)
                 part = f"[\n{indent(inner, INDENT)}\n]"
-            elif isinstance(value, dict):
+            elif isinstance(value, dict) and value:
                 inner = "\n".join(f"{k!r}: {v!r}," for k, v in value.items())
                 part = f"{{\n{indent(inner, INDENT)}\n}}"
             else:
