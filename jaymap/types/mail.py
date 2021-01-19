@@ -11,6 +11,18 @@ from jaymap.types.base import Datatype, field
 from jaymap.types.core import Id, UnsignedInt, UTCDate
 
 
+class MailboxRights(Datatype):
+    may_read_items: bool
+    may_add_items: bool
+    may_remove_items: bool
+    may_set_seen: bool
+    may_set_keywords: bool
+    may_create_child: bool
+    may_rename: bool
+    may_delete: bool
+    may_submit: bool
+
+
 class Mailbox(Datatype):
     id: Id
     name: str
@@ -21,7 +33,7 @@ class Mailbox(Datatype):
     unread_emails: UnsignedInt
     total_threads: UnsignedInt
     unread_threads: UnsignedInt
-    my_rights: Any
+    my_rights: MailboxRights
     is_subscribed: bool
 
 
@@ -45,6 +57,27 @@ class EmailHeader(Datatype):
     value: str
 
 
+class EmailBodyPart(Datatype):
+    part_id: Optional[str]
+    blob_id: Optional[Id]
+    size: UnsignedInt
+    name: Optional[str]
+    type: str
+    charset: Optional[str]
+    disposition: Optional[str]
+    cid: Optional[str]
+    language: Optional[List[str]]
+    location: Optional[str]
+    headers: List[EmailHeader] = field(default_factory=list)
+    sub_parts: Optional[List["EmailBodyPart"]] = field(default_factory=list)
+
+
+class EmailBodyValue(Datatype):
+    value: str
+    is_encoding_problem: bool = False
+    is_truncated: bool = False
+
+
 class Email(Datatype):
     id: Id
     blob_id: Id
@@ -64,6 +97,14 @@ class Email(Datatype):
     reply_to: Optional[List[EmailAddress]]
     subject: Optional[str]
     sent_at: Optional[str]
+    body_values: Dict[str, EmailBodyValue]
+    text_body: List[EmailBodyPart]
+    html_body: List[EmailBodyPart]
+    attachments: List[EmailBodyPart]
+    has_attachment: bool
+    preview: str
+    body_structure: Optional[EmailBodyPart] = None
+    headers: List[EmailHeader] = field(default_factory=list)
 
 
 class SearchSnippet(Datatype):
