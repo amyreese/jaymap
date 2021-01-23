@@ -7,9 +7,11 @@ Base datatype implementation with encoding/decoding support
 
 import json
 import re
+import sys
 from dataclasses import dataclass, field, is_dataclass, asdict, fields
 from textwrap import indent
 from typing import (
+    get_type_hints,
     Union,
     Dict,
     Any,
@@ -73,9 +75,8 @@ def decode(obj: Any, hint: Type) -> Any:
 
         kwargs: Dict[str, Any] = {}
 
-        for field in fields(ftype):
-            ft = field.type
-            fname = field.name
+        namespace = sys.modules[ftype.__module__].__dict__
+        for fname, ft in get_type_hints(ftype, namespace).items():
             key = camelcase(fname.strip("_"))
 
             if key in obj:
@@ -183,9 +184,8 @@ def encode(obj: Any, hint: Type) -> Any:
     if isinstance(obj, Datatype):
         result: Dict[str, Any] = {}
 
-        for field in fields(obj):
-            ftype = field.type
-            fname = field.name
+        namespace = sys.modules[ftype.__module__].__dict__
+        for fname, ftype in get_type_hints(obj, namespace).items():
             key = camelcase(fname.strip("_"))
             value = getattr(obj, fname)
 
