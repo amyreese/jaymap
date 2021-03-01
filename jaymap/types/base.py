@@ -32,6 +32,7 @@ from typing_inspect import (
     is_generic_type,
     is_optional_type,
     is_union_type,
+    is_typevar,
     get_origin,
     get_args,
     get_generic_bases,
@@ -50,8 +51,15 @@ def is_primitive(ftype: Type) -> bool:
         return False
 
 
-def decode(obj: Any, hint: Type) -> Any:
+def decode(obj: Any, hint: Type, hint_args: Any = ()) -> Any:
     ftype = hint
+    origin = get_origin(ftype)
+    bases = get_generic_bases(ftype)
+    targs = get_args(ftype)
+
+    if hint_args and any(is_typevar(t) for t in targs):
+        targs = hint_args
+
     if ftype in PRIMITIVES:
         return obj
 
@@ -59,36 +67,37 @@ def decode(obj: Any, hint: Type) -> Any:
         if obj is None:
             return None
 
-        targs = [t for t in get_args(ftype) if t is not type(None)]
-        if len(targs) > 1:
-            raise NotImplementedError(f"can't decode union types ({targs})")
-        ftype = targs[0]
+        real_args = [t for t in targs if t is not type(None)]
+        if len(real_args) > 1:
+            raise NotImplementedError(f"can't decode union types ({real_args})")
+        ftype = real_args[0]
+        origin = get_origin(ftype)
     elif is_union_type(ftype):
-        raise NotImplementedError(f"can't decode union types ({get_args(ftype)})")
+        raise NotImplementedError(f"can't decode union types ({targs})")
 
     if is_primitive(ftype):
         return ftype(obj)
 
-    if is_datatype(ftype):
+    if is_datatype(ftype) or (origin and is_dataclass(origin)):
         if not isinstance(obj, dict):
             raise TypeError(f"invalid data {obj!r} for {ftype}")
 
         kwargs: Dict[str, Any] = {}
 
         namespace = sys.modules[ftype.__module__].__dict__
-        for fname, ft in get_type_hints(ftype, namespace).items():
+        if origin and is_dataclass(origin):
+            type_hints = get_type_hints(origin, namespace)
+        else:
+            type_hints = get_type_hints(ftype, namespace)
+        for fname, ft in type_hints.items():
             key = camelcase(fname.strip("_"))
 
             if key in obj:
-                kwargs[fname] = decode(obj[key], ft)
+                kwargs[fname] = decode(obj[key], ft, targs)
 
         return ftype(**kwargs)
 
     if is_generic_type(ftype):
-        origin = get_origin(ftype)
-        bases = get_generic_bases(ftype)
-        targs = get_args(ftype)
-
         while origin is None and bases:
             if len(bases) > 1:  # pragma: nocover
                 raise NotImplementedError(f"can't decode multiple bases {ftype}")

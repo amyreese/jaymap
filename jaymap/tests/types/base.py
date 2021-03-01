@@ -2,10 +2,23 @@
 # Licensed under the MIT license
 
 import textwrap
-from typing import Tuple, Dict, Any, Optional, List, Union, Set, Iterable
+from typing import (
+    Generic,
+    Tuple,
+    Dict,
+    Any,
+    Optional,
+    List,
+    Union,
+    Set,
+    Iterable,
+    TypeVar,
+)
 from unittest import TestCase
 
 from jaymap.types import base
+
+T = TypeVar("T")
 
 
 class MyInt(int):
@@ -27,6 +40,16 @@ class Foo(base.Datatype):
 class Nested(base.Datatype):
     foos: List[Foo]
     maybe: Optional[Foo]
+
+
+class Pair(base.Datatype):
+    key: str
+    value: str
+
+
+class MultiItems(Generic[T], base.Datatype):
+    name: str
+    items: List[T]
 
 
 class BaseTypes(TestCase):
@@ -152,6 +175,19 @@ class BaseTypes(TestCase):
                 self.assertEqual(result, expected)
                 for v in result:
                     self.assertIsInstance(v, MyInt)
+
+    def test_decode_generics(self):
+        data = {
+            "name": "foobar",
+            "items": [{"key": "a", "value": "b"}, {"key": "car", "value": "hatchback"}],
+        }
+        expected = MultiItems(
+            name="foobar",
+            items=[Pair(key="a", value="b"), Pair(key="car", value="hatchback")],
+        )
+
+        result = base.decode(data, MultiItems[Pair])
+        self.assertEqual(result, expected)
 
     def test_decode_unsupported_types(self):
         with self.assertRaisesRegex(NotImplementedError, "can't decode union types"):
