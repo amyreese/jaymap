@@ -10,7 +10,7 @@ https://jmap.io/spec-core.html
 import re
 import time
 from datetime import datetime, timezone
-from typing import Union, Dict, Tuple, Any, List, Optional, Type
+from typing import Union, Dict, Tuple, Any, List, Optional, Type, Generic
 
 from jaymap.types.base import Datatype, T
 
@@ -137,3 +137,16 @@ class Response(Datatype):
     method_responses: List[Invocation]
     session_state: str
     created_ids: Optional[Dict[Id, Id]] = None
+
+
+class ResultReference(Datatype):
+    result_of: str
+    name: str
+    path: str
+
+
+class GetResult(Generic[T], Datatype):
+    account_id: Id
+    state: str
+    list: List[T]
+    not_found: Optional[List[Id]] = None

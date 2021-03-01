@@ -10,6 +10,7 @@ from typing import Dict, List
 
 import aiohttp
 
+from jaymap.api import MailboxAPI, EmailAPI
 from jaymap.types.core import Session, Request, Response
 
 LOG = logging.getLogger(__name__)
@@ -53,6 +54,14 @@ class JMAP:
 
     async def __aexit__(self, *args) -> None:
         await self.stack.aclose()
+
+    @property
+    def mailbox(self) -> MailboxAPI:
+        return MailboxAPI(self)
+
+    @property
+    def email(self) -> EmailAPI:
+        return EmailAPI(self)
 
     async def update_session(self) -> Session:
         discovery_url = f"https://{self.domain}/.well-known/jmap"

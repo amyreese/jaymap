@@ -12,15 +12,22 @@ from jaymap.types.core import Request, Invocation, Capabilities
 from jaymap.types.mail import Email
 
 
-@click.command()
+@click.group()
+@click.pass_context
 @click.option("--domain", prompt=True)
 @click.option("--username", prompt=True)
 @click.option("--password", prompt=True, hide_input=True)
-def main(domain: str, username: str, password: str):
+def main(ctx: click.Context, domain: str, username: str, password: str):
+    ctx.obj = (domain, username, password)
+
     logging.basicConfig(level=logging.DEBUG, stream=sys.stdout)
 
+
+@main.command()
+@click.pass_context
+def multiquery(ctx: click.Context):
     async def inner():
-        async with JMAP(domain, username, password) as client:
+        async with JMAP(*ctx.obj) as client:
             click.echo(client.session)
             account_id = client.session.primary_accounts[Capabilities.MAIL]
             methods = [
@@ -73,6 +80,19 @@ def main(domain: str, username: str, password: str):
             emails = res.method_responses[-1][1]["list"]
             emails = Email.from_list(emails)
             click.secho(f"{emails!r}")
+
+    asyncio.run(inner())
+
+
+@main.command()
+@click.pass_context
+def mailbox(ctx: click.Context):
+    async def inner():
+        async with JMAP(*ctx.obj) as client:
+            result = await client.mailbox.get()
+            mailboxes = result.list
+            for mailbox in mailboxes:
+                click.secho(f"{mailbox!r}", fg="red")
 
     asyncio.run(inner())
 
