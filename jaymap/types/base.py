@@ -138,8 +138,8 @@ def decode(obj: Any, hint: Type, hint_args: Any = ()) -> Any:
     raise NotImplementedError(f"failed to decode {obj} as type {hint}")
 
 
-def encode(obj: Any, hint: Type) -> Any:
-    ftype = hint
+def encode(obj: Any, hint: Optional[Type] = None) -> Any:
+    ftype = hint or type(obj)
     if obj is None or is_primitive(ftype):
         return obj
 
@@ -198,7 +198,8 @@ def encode(obj: Any, hint: Type) -> Any:
             key = camelcase(fname.strip("_"))
             value = getattr(obj, fname)
 
-            result[key] = encode(value, ftype)
+            if value or not obj._sparse:
+                result[key] = encode(value, ftype)
 
         return result
 
@@ -208,8 +209,9 @@ def encode(obj: Any, hint: Type) -> Any:
 class Datatype:
     """Dataclass derivative with json encode/decode capabilities"""
 
-    def __init_subclass__(cls):
+    def __init_subclass__(cls, sparse: bool = False):
         dataclass(repr=False)(cls)
+        cls._sparse = sparse
 
     def __repr__(self) -> str:
         parts: List[str] = []

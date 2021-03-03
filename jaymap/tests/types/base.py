@@ -52,6 +52,10 @@ class MultiItems(Generic[T], base.Datatype):
     items: List[T]
 
 
+class FooSparse(Foo, sparse=True):
+    pass
+
+
 class BaseTypes(TestCase):
     def test_is_primitive(self):
         for t in (str, int, bool, float, type(None), Any):
@@ -255,6 +259,24 @@ class BaseTypes(TestCase):
             "items": [1, 3, 9],
             "bucketValues": {"foo": 1, "bar": 2},
             "maybe": None,
+        }
+        self.assertEqual(result, expected)
+
+    def test_encode_datatype_spares(self):
+        result = base.encode(
+            FooSparse(
+                name="something",
+                from_=1234,
+                items=[],
+                bucket_values={"foo": 1, "bar": 2},
+                maybe=None,
+            ),
+            FooSparse,
+        )
+        expected = {
+            "name": "something",
+            "from": 1234,
+            "bucketValues": {"foo": 1, "bar": 2},
         }
         self.assertEqual(result, expected)
 
