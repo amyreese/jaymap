@@ -8,7 +8,7 @@ https://jmap.io/spec-mail.html
 from typing import Optional, Any, List, Dict
 
 from jaymap.types.base import Datatype, field
-from jaymap.types.core import Id, UnsignedInt, UTCDate
+from jaymap.types.core import Id, UnsignedInt, UTCDate, FilterCondition
 
 
 class MailboxRights(Datatype):
@@ -161,3 +161,11 @@ class VacationResponse(Datatype):
     subject: Optional[str]
     text_body: Optional[str]
     html_body: Optional[str]
+
+
+class MailboxCondition(FilterCondition, sparse=True):
+    parent_id: Optional[Id] = None
+    name: Optional[str] = None
+    role: Optional[str] = None
+    has_any_role: Optional[bool] = None
+    is_subscribed: Optional[bool] = None

@@ -150,3 +150,34 @@ class GetResult(Generic[T], Datatype):
     state: str
     list: List[T]
     not_found: Optional[List[Id]] = None
+
+
+class Operator:
+    AND = "AND"
+    OR = "OR"
+    NOT = "NOT"
+
+
+class FilterCondition(Datatype, sparse=True):
+    pass
+
+
+class FilterOperator(Datatype):
+    operator: Operator
+    conditions: List[Union["FilterOperator", FilterCondition]]
+
+
+class Comparator(Datatype):
+    property: str
+    is_ascending: bool = True
+    collation: str = ""
+
+
+class QueryResult(Datatype):
+    account_id: Id
+    query_state: str
+    can_calculate_changes: bool
+    position: UnsignedInt
+    ids: List[Id]
+    total: Optional[UnsignedInt] = None
+    limit: Optional[UnsignedInt] = None

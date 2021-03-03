@@ -9,7 +9,7 @@ import click
 
 from jaymap.client import JMAP
 from jaymap.types.core import Request, Invocation, Capabilities
-from jaymap.types.mail import Email
+from jaymap.types.mail import Email, MailboxCondition
 
 
 @click.group()
@@ -93,6 +93,12 @@ def mailbox(ctx: click.Context):
             mailboxes = result.list
             for mailbox in mailboxes:
                 click.secho(f"{mailbox!r}", fg="red")
+
+            result = await client.mailbox.query(filter=MailboxCondition(role="inbox"))
+            result = await client.mailbox.get(ids=result.ids)
+            mailboxes = result.list
+            for mailbox in mailboxes:
+                click.secho(f"{mailbox!r}", fg="yellow")
 
     asyncio.run(inner())
 
