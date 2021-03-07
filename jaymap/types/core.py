@@ -145,6 +145,16 @@ class ResultReference(Datatype):
     path: str
 
 
+class ChangesResult(Datatype):
+    account_id: Id
+    old_state: str
+    new_state: str
+    has_more_changes: bool
+    created: List[Id]
+    updated: List[Id]
+    destroyed: List[Id]
+
+
 class GetResult(Generic[T], Datatype):
     account_id: Id
     state: str
@@ -181,3 +191,20 @@ class QueryResult(Datatype):
     ids: List[Id]
     total: Optional[UnsignedInt] = None
     limit: Optional[UnsignedInt] = None
+
+
+class SetError(Datatype):
+    type: str = ""
+    description: Optional[str] = ""
+
+
+class SetResult(Generic[T], Datatype):
+    account_id: Id
+    old_state: Optional[str] = None
+    new_state: str = ""
+    created: Optional[Dict[Id, T]] = None
+    updated: Optional[Dict[Id, Optional[T]]] = None
+    destroyed: Optional[List[Id]] = None
+    not_created: Optional[Dict[Id, SetError]] = None
+    not_update: Optional[Dict[Id, SetError]] = None
+    not_destroyed: Optional[Dict[Id, SetError]] = None

@@ -4,6 +4,8 @@
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Optional, Iterable, List, Union, Any, Dict
 
+from stringcase import camelcase
+
 from jaymap.types.base import decode, encode
 from jaymap.types.core import (
     Id,
@@ -17,8 +19,9 @@ from jaymap.types.core import (
     FilterCondition,
     FilterOperator,
     UnsignedInt,
+    SetResult,
 )
-from jaymap.types.mail import Mailbox, Email, MailboxCondition
+from jaymap.types.mail import Mailbox, Email, MailboxCondition, EmailCondition
 
 if TYPE_CHECKING:
     from jaymap.client import JMAP  # pylint: disable=cyclic-import
@@ -40,21 +43,12 @@ class API:
             return primary_accounts[self.using]
         return primary_accounts.get(Capabilities.CORE, Id(""))
 
-    async def _get(
-        self,
-        *,
-        ids: Optional[Iterable[Id]] = None,
-        properties: Optional[List[str]] = None,
-        account_id: Optional[Id] = None,
-        **kwargs: Any,
-    ) -> Invocation:
-        method = f"{self.name}/get"
-        kwargs["accountId"] = account_id or self.account_id
-
-        if ids:
-            kwargs["ids"] = ids
-        if properties:
-            kwargs["properties"] = properties
+    async def _request(self, method: str, **kwargs: Any) -> Invocation:
+        kwargs = {
+            camelcase(k.strip("_")): v for k, v in kwargs.items() if v is not None
+        }
+        if "accountId" not in kwargs:
+            kwargs["accountId"] = self.account_id
 
         req = Request(
             using=[self.using], method_calls=[Invocation(method, kwargs, "c1")]
@@ -67,10 +61,39 @@ class API:
 
         return result
 
+    async def _changes(
+        self,
+        *,
+        since_state: str,
+        max_changes: Optional[UnsignedInt] = None,
+        account_id: Optional[Id] = None,
+        **kwargs: Any,
+    ) -> Invocation:
+        method = f"{self.name}/changes"
+        return await self._request(
+            method,
+            since_state=since_state,
+            max_changes=max_changes,
+            account_id=account_id,
+            **kwargs,
+        )
+
+    async def _get(
+        self,
+        *,
+        ids: Union[ResultReference, Iterable[Id], None] = None,
+        properties: Optional[List[str]] = None,
+        account_id: Optional[Id] = None,
+        **kwargs: Any,
+    ) -> Invocation:
+        method = f"{self.name}/get"
+        return await self._request(
+            method, ids=ids, properties=properties, account_id=account_id, **kwargs
+        )
+
     async def _query(
         self,
         *,
-        kwargs: Optional[Dict[str, Any]] = None,
         filter: Union[FilterCondition, FilterOperator, None] = None,
         sort: Optional[Comparator] = None,
         position: int = 0,
@@ -79,35 +102,42 @@ class API:
         limit: Optional[UnsignedInt] = None,
         calculate_total: bool = False,
         account_id: Optional[Id] = None,
+        **kwargs: Any,
     ) -> Invocation:
         method = f"{self.name}/query"
-
-        if not kwargs:
-            kwargs = {}
-        kwargs["accountId"] = account_id or self.account_id
-
-        for key, value in (
-            ("filter", encode(filter)),
-            ("sort", encode(sort)),
-            ("position", position),
-            ("anchor", anchor),
-            ("anchorOffset", anchor_offset),
-            ("limit", limit),
-            ("calculateTotal", calculate_total),
-        ):
-            if value:
-                kwargs[key] = value
-
-        req = Request(
-            using=[self.using], method_calls=[Invocation(method, kwargs, "c1")]
+        return await self._request(
+            method,
+            filter=encode(filter),
+            sort=encode(sort),
+            position=position,
+            anchor=anchor,
+            anchor_offset=anchor_offset,
+            limit=limit,
+            calculate_total=calculate_total,
+            account_id=account_id,
+            **kwargs,
         )
-        response = await self.client.request(req)
-        result = response.method_responses[0]
 
-        if result[0] != method:
-            raise ValueError(result)
-
-        return result
+    async def _set(
+        self,
+        *,
+        if_in_state: Optional[str] = None,
+        create: Optional[Dict[Id, Any]] = None,
+        update: Optional[Dict[Id, List[str]]] = None,
+        destroy: Optional[List[Id]] = None,
+        account_id: Optional[Id] = None,
+        **kwargs: Any,
+    ) -> Invocation:
+        method = f"{self.name}/set"
+        return await self._request(
+            method,
+            if_in_state=if_in_state,
+            create=create,
+            update=update,
+            destroy=destroy,
+            account_id=account_id,
+            **kwargs,
+        )
 
 
 @dataclass
@@ -139,10 +169,9 @@ class MailboxAPI(API):
         calculate_total: bool = False,
         account_id: Optional[Id] = None,
     ) -> QueryResult:
-        kwargs = {"sortAsTree": sort_as_tree, "filterAsTree": filter_as_tree}
-
         result = await self._query(
-            kwargs=kwargs,
+            sort_as_tree=sort_as_tree,
+            filter_as_tree=filter_as_tree,
             filter=filter,
             sort=sort,
             position=position,
@@ -152,7 +181,27 @@ class MailboxAPI(API):
             calculate_total=calculate_total,
             account_id=account_id,
         )
-        return QueryResult.from_dict(result[1])
+        return decode(result[1], QueryResult)
+
+    async def set(
+        self,
+        *,
+        on_destroy_remove_emails: bool = False,
+        if_in_state: Optional[str] = None,
+        create: Optional[Dict[Id, Any]] = None,
+        update: Optional[Dict[Id, List[str]]] = None,
+        destroy: Optional[List[Id]] = None,
+        account_id: Optional[Id] = None,
+    ) -> SetResult[Mailbox]:
+        result = await self._set(
+            on_destroy_remove_emails=on_destroy_remove_emails,
+            if_in_state=if_in_state,
+            create=create,
+            update=update,
+            destroy=destroy,
+            account_id=account_id,
+        )
+        return decode(result[1], SetResult[Mailbox])
 
 
 @dataclass
@@ -168,3 +217,49 @@ class EmailAPI(API):
     ) -> GetResult[Email]:
         result = await self._get(ids=ids, properties=properties, account_id=account_id)
         return decode(result[1], GetResult[Email])
+
+    async def query(
+        self,
+        *,
+        collapse_threads: bool = False,
+        filter: Union[EmailCondition, FilterOperator, None] = None,
+        sort: Optional[Comparator] = None,
+        position: int = 0,
+        anchor: Optional[Id] = None,
+        anchor_offset: int = 0,
+        limit: Optional[UnsignedInt] = None,
+        calculate_total: bool = False,
+        account_id: Optional[Id] = None,
+    ) -> QueryResult:
+        kwargs = {"collapseThreads": collapse_threads}
+
+        result = await self._query(
+            kwargs=kwargs,
+            filter=filter,
+            sort=sort,
+            position=position,
+            anchor=anchor,
+            anchor_offset=anchor_offset,
+            limit=limit,
+            calculate_total=calculate_total,
+            account_id=account_id,
+        )
+        return QueryResult.from_dict(result[1])
+
+    async def set(
+        self,
+        *,
+        if_in_state: Optional[str] = None,
+        create: Optional[Dict[Id, Any]] = None,
+        update: Optional[Dict[Id, List[str]]] = None,
+        destroy: Optional[List[Id]] = None,
+        account_id: Optional[Id] = None,
+    ) -> SetResult[Email]:
+        result = await self._set(
+            if_in_state=if_in_state,
+            create=create,
+            update=update,
+            destroy=destroy,
+            account_id=account_id,
+        )
+        return decode(result[1], SetResult[Email])

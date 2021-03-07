@@ -169,3 +169,26 @@ class MailboxCondition(FilterCondition, sparse=True):
     role: Optional[str] = None
     has_any_role: Optional[bool] = None
     is_subscribed: Optional[bool] = None
+
+
+class EmailCondition(FilterCondition, sparse=True):
+    in_mailbox: Optional[Id] = None
+    in_mailbox_other_than: Optional[List[Id]] = None
+    before: Optional[UTCDate] = None
+    after: Optional[UTCDate] = None
+    min_size: Optional[UnsignedInt] = None
+    max_size: Optional[UnsignedInt] = None
+    all_in_thread_have_keyword: Optional[str] = None
+    some_in_thread_have_keyword: Optional[str] = None
+    none_in_thread_have_keyword: Optional[str] = None
+    has_keyword: Optional[str] = None
+    not_keyword: Optional[str] = None
+    has_attachment: Optional[bool] = None
+    text: Optional[str] = None
+    from_: Optional[str] = None
+    to: Optional[str] = None
+    cc: Optional[str] = None
+    bcc: Optional[str] = None
+    subject: Optional[str] = None
+    body: Optional[str] = None
+    header: Optional[List[str]] = None
