@@ -25,6 +25,19 @@ def main(ctx: click.Context, domain: str, username: str, password: str):
 
 @main.command()
 @click.pass_context
+def subscribe(ctx: click.Context):
+    async def callback(*args, **kwargs):
+        print(f"callback({args=}, {kwargs=})")
+
+    async def inner():
+        async with JMAP(*ctx.obj) as client:
+            await client.subscribe(callback=callback)
+
+    asyncio.run(inner())
+
+
+@main.command()
+@click.pass_context
 def multiquery(ctx: click.Context):
     async def inner():
         async with JMAP(*ctx.obj) as client:

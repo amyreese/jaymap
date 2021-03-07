@@ -6,7 +6,7 @@ import json
 import logging
 from contextlib import AsyncExitStack
 from dataclasses import dataclass, field
-from typing import Dict, List
+from typing import Dict, List, Coroutine, Optional
 
 import aiohttp
 
@@ -33,6 +33,7 @@ class JMAP:
 
     stack: AsyncExitStack = field(init=False, repr=False)
     client: aiohttp.ClientSession = field(init=False, repr=False)
+    subscription: Optional[asyncio.Task] = field(init=False, repr=False, default=None)
 
     @property
     def client_headers(self) -> Dict[str, str]:
@@ -52,8 +53,16 @@ class JMAP:
         await self.update_session()
         return self
 
-    async def __aexit__(self, *args) -> None:
+    async def __aexit__(self, exc_type, exc_value, traceback) -> None:
+        if self.subscription is not None:
+            if exc_type:  # exception
+                self.subscription.cancel()
+            await self.subscription
         await self.stack.aclose()
+
+    async def close(self) -> None:
+        if self.subscription is not None:
+            self.subscription.cancel()
 
     @property
     def mailbox(self) -> MailboxAPI:
@@ -94,3 +103,41 @@ class JMAP:
                 asyncio.create_task(self.update_session())
 
             return data
+
+    async def subscribe(
+        self, callback: Coroutine[None, None, None], types: Optional[List[str]] = None
+    ) -> None:
+        """
+        Create a connection to the server and call the given coroutine with any updates.
+        """
+
+        if self.subscription is not None:
+            raise ValueError("already subscribed!")
+
+        async def inner():
+            try:
+                async with self.client.get(
+                    self.session.event_source_url,
+                    params={
+                        "types": ",".join(types) if types else "*",
+                        "closeafter": "state",
+                        "ping": 30,
+                    },
+                ) as response:
+                    while True:
+                        line = await response.content.readline()
+                        if not line:
+                            LOG.info("subscription closed")
+                            break
+
+                        await callback(line)
+                        await asyncio.sleep(0.1)
+            except asyncio.CancelledError:
+                LOG.debug("subscription cancelled")
+            except Exception:  # pylint: disable=broad-except
+                LOG.exception("subscription failed")
+            finally:
+                self.subscription = False
+
+        self.subscription = asyncio.create_task(inner())
+        LOG.debug("subscribed: %s", self.subscription)

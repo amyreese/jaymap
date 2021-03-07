@@ -145,6 +145,11 @@ class ResultReference(Datatype):
     path: str
 
 
+class StateChange(Datatype):
+    type: str
+    changed: Dict[Id, Dict[str, str]]
+
+
 class ChangesResult(Datatype):
     account_id: Id
     old_state: str
